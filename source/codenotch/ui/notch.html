@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  /* Visual reference: upstream docs/specs/2026-08-28-usage-notch-design.md, reproduced for Windows */
+  *{box-sizing:border-box} /* content-box padding once pushed the card past the window's left edge */
+  html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;user-select:none}
+  body{font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
+  #root{position:relative;width:100%;height:100%}
+
+  /* Base pill */
+  #pill{
+    position:absolute;background:#000;box-shadow:none;cursor:pointer;--fillet:16px;z-index:10;
+  }
+  #pill::before,#pill::after{
+    content:"";position:absolute;width:var(--fillet);height:var(--fillet);pointer-events:none;
+  }
+
+  /* Default / Edge Right (Right-hand screen edge) */
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #pill, body.edge-right #pill{
+    right:0;left:auto;top:50%;bottom:auto;transform:translateY(-50%);
+    width:44px;height:auto;padding:8px 0;
+    border-radius:16px 0 0 16px;
+    border:1px solid rgba(255,255,255,0.14);border-right:none;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #pill::before, body.edge-right #pill::before{
+    right:0;left:auto;top:calc(-1 * var(--fillet));bottom:auto;
+    background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #pill::after, body.edge-right #pill::after{
+    right:0;left:auto;bottom:calc(-1 * var(--fillet));top:auto;
+    background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #cells, body.edge-right #cells{
+    display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
+  }
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #card, body.edge-right #card{
+    left:8px;right:52px;margin-left:auto;margin-right:0;
+  }
+  body:not(.edge-left):not(.edge-top):not(.edge-bottom) #card::after, body.edge-right #card::after{
+    right:-7px;left:auto;top:var(--tail, 50%);bottom:auto;transform:translateY(-50%);
+    border:7px solid transparent;border-right:none;border-left:8px solid #0c0c0e;
+  }
+
+  /* Edge Left (Left-hand screen edge) */
+  body.edge-left #pill{
+    left:0;right:auto;top:50%;bottom:auto;transform:translateY(-50%);
+    width:44px;height:auto;padding:8px 0;
+    border-radius:0 16px 16px 0;
+    border:1px solid rgba(255,255,255,0.14);border-left:none;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  body.edge-left #pill::before{
+    left:0;right:auto;top:calc(-1 * var(--fillet));bottom:auto;
+    background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-left #pill::after{
+    left:0;right:auto;bottom:calc(-1 * var(--fillet));top:auto;
+    background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-left #cells{
+    display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
+  }
+  body.edge-left #card{
+    left:52px;right:8px;margin-left:0;margin-right:auto;
+  }
+  body.edge-left #card::after{
+    left:-7px;right:auto;top:var(--tail, 50%);bottom:auto;transform:translateY(-50%);
+    border:7px solid transparent;border-left:none;border-right:8px solid #0c0c0e;
+  }
+
+  /* Edge Top (MacBook-style horizontal notch at top of screen) */
+  body.edge-top #pill{
+    top:0;bottom:auto;left:50%;right:auto;transform:translateX(-50%);
+    height:auto;min-height:56px;width:auto;min-width:140px;padding:6px 18px;
+    border-radius:0 0 16px 16px;
+    border:1px solid rgba(255,255,255,0.14);border-top:none;
+    display:flex;flex-direction:row;align-items:center;gap:12px;
+  }
+  body.edge-top #pill::before{
+    top:0;bottom:auto;left:calc(-1 * var(--fillet));right:auto;
+    background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-top #pill::after{
+    top:0;bottom:auto;right:calc(-1 * var(--fillet));left:auto;
+    background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-top #cells{
+    display:flex;flex-direction:row;align-items:center;gap:12px;width:auto;
+  }
+  body.edge-top #card{
+    top:62px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);
+    max-width:260px;margin:0 auto;
+  }
+  body.edge-top #card::after{
+    top:-7px;bottom:auto;left:var(--tail-x, 50%);right:auto;transform:translateX(-50%);
+    border:7px solid transparent;border-top:none;border-bottom:8px solid #0c0c0e;
+  }
+
+  /* Edge Bottom (Horizontal notch at bottom of screen) */
+  body.edge-bottom #pill{
+    bottom:0;top:auto;left:50%;right:auto;transform:translateX(-50%);
+    height:auto;min-height:56px;width:auto;min-width:140px;padding:6px 18px;
+    border-radius:16px 16px 0 0;
+    border:1px solid rgba(255,255,255,0.14);border-bottom:none;
+    display:flex;flex-direction:row;align-items:center;gap:12px;
+  }
+  body.edge-bottom #pill::before{
+    bottom:0;top:auto;left:calc(-1 * var(--fillet));right:auto;
+    background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-bottom #pill::after{
+    bottom:0;top:auto;right:calc(-1 * var(--fillet));left:auto;
+    background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), rgba(255,255,255,0.14) calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+  }
+  body.edge-bottom #cells{
+    display:flex;flex-direction:row;align-items:center;gap:12px;width:auto;
+  }
+  body.edge-bottom #card{
+    bottom:62px;top:auto;left:50%;right:auto;transform:translateX(-50%);
+    max-width:260px;margin:0 auto;
+  }
+  body.edge-bottom #card::after{
+    bottom:-7px;top:auto;left:var(--tail-x, 50%);right:auto;transform:translateX(-50%);
+    border:7px solid transparent;border-bottom:none;border-top:8px solid #0c0c0e;
+  }
+
+  /* Mode switch at the top/side of the pill: Left = Kalan (Remaining), Right = Kullanılan (Used) */
+  .pill-switch{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    width:36px;padding:2px 0 4px;cursor:pointer;user-select:none;-webkit-user-select:none;flex-shrink:0;
+  }
+  body.edge-top .pill-switch, body.edge-bottom .pill-switch{
+    padding:0 4px;margin-right:6px;border-right:1px solid rgba(255,255,255,0.15);padding-right:10px;
+  }
+  .sw-track{
+    position:relative;width:28px;height:14px;border-radius:7px;
+    background:#1c1c20;border:1px solid rgba(255,255,255,0.22);
+    transition:background .2s ease,border-color .2s ease;
+  }
+  .sw-track.remaining{
+    background:#0e2417;border-color:rgba(40,224,123,0.5);
+  }
+  .sw-track.used{
+    background:#2b1d0c;border-color:rgba(255,191,0,0.5);
+  }
+  .sw-knob{
+    position:absolute;top:1px;left:0;width:10px;height:10px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.6);
+    transition:transform .2s cubic-bezier(0.4,0,0.2,1),background .2s ease,box-shadow .2s ease;
+  }
+  .sw-track.remaining .sw-knob{
+    transform:translateX(2px);background:#28E07B;box-shadow:0 0 6px rgba(40,224,123,0.65);
+  }
+  .sw-track.used .sw-knob{
+    transform:translateX(14px);background:#FFBF00;box-shadow:0 0 6px rgba(255,191,0,0.65);
+  }
+  .sw-lbl{
+    font-size:7.5px;font-weight:700;line-height:1;text-transform:uppercase;letter-spacing:.3px;text-align:center;
+    transition:color .2s ease;
+  }
+  .sw-track.remaining ~ .sw-lbl{color:#28E07B}
+  .sw-track.used ~ .sw-lbl{color:#FFBF00}
+
+  .cell{
+    display:flex;flex-direction:column;align-items:center;gap:2px;cursor:grab;
+    user-select:none;-webkit-user-select:none;touch-action:none;transition:transform .12s ease, opacity .12s ease;
+  }
+  .cell.drag-placeholder{
+    opacity:0.25;outline:1.5px dashed rgba(255,255,255,0.45);outline-offset:2px;border-radius:8px;
+  }
+  #drag-ghost{
+    pointer-events:none;cursor:grabbing;
+  }
+  .ringwrap{position:relative;width:34px;height:34px}
+  .ringwrap > svg.ring{position:absolute;inset:0;overflow:visible}
+  .glyph{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#e8e8ea;letter-spacing:-.5px;
+  }
+  .glyph.small{font-size:11px}
+  .glyph img,.glyph svg{display:block;pointer-events:none;user-select:none}
+  .glyph .mark{display:block;width:17px;height:17px}
+  .glyph .mark svg{width:17px;height:17px;display:block}
+  .glyph img.png{width:17px;height:17px;object-fit:contain}
+  .glyph img.appicon{width:20px;height:20px;border-radius:5px;object-fit:cover}
+  .c-head .mark{display:inline-block;width:15px;height:15px;margin-right:2px}
+  .c-head .mark svg{width:15px;height:15px;display:inline-block}
+  .pct{font-size:11px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums;line-height:1}
+  .dim{opacity:.55}
+
+  /* Fallback text letter colors when SVG is absent */
+  .cell[data-p="claude"] .glyph:empty, .cell[data-p="claude_api"] .glyph:empty { color:#D97757; }
+  .cell[data-p="codex"] .glyph:empty { color:#10A37F; }
+  .cell[data-p="cursor"] .glyph:empty { color:#0EA5E9; }
+  .cell[data-p="gemini"] .glyph:empty { color:#4285F4; }
+  .cell[data-p="gemini_api"] .glyph:empty { color:#4E88FF; }
+  .cell[data-p="deepseek"] .glyph:empty { color:#0C6FF9; }
+  .cell[data-p="glm"] .glyph:empty { color:#3B82F6; }
+  .cell[data-p="nvidia"] .glyph:empty { color:#76B900; }
+  .cell[data-p="copilot"] .glyph:empty { color:#A855F7; }
+  .cell[data-p="ollama"] .glyph:empty { color:#F59E0B; }
+
+  /* Hover card */
+  #card{
+    position:absolute;left:8px;right:52px;top:50%;transform:translateY(-50%);--tail:50%;--tail-x:50%;
+    max-width:220px;background:#0c0c0e;border-radius:14px;padding:12px 14px;
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow:0 8px 30px rgba(0,0,0,0.7);
+    overflow-wrap:anywhere;min-width:0;
+    max-height:calc(100% - 16px);overflow:hidden;
+    display:none;z-index:20;
+  }
+  #card.show{display:block}
+  #card::after{
+    content:"";position:absolute;
+  }
+  .c-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .c-title{font-size:13px;font-weight:700}
+  .c-settings-btn{margin-left:auto;background:none;border:none;color:#808080;cursor:pointer;padding:2px 4px;border-radius:4px;font-size:13px;line-height:1;display:flex;align-items:center}
+  .c-settings-btn:hover{color:#fff;background:rgba(255,255,255,0.12)}
+  .c-sub{font-size:10.5px;color:#808080;margin-bottom:8px}
+  .win{margin-top:8px}
+  .w-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;flex-wrap:wrap;column-gap:8px}
+  .w-label{color:#e8e8ea;font-weight:600;white-space:nowrap}
+  .w-reset{color:#808080;font-size:10.5px;white-space:nowrap;margin-left:auto}
+  .w-track{height:3.5px;border-radius:2px;background:#2d2d2d;margin:5px 0 3px;overflow:hidden}
+  .w-fill{height:100%;border-radius:2px}
+  .w-used{font-size:10.5px;color:#808080}
+  .c-note{font-size:11px;color:#c8c8c8;line-height:1.4;margin-top:6px}
+  .c-sessions{margin-top:10px;border-top:1px solid #1e1e1e;padding-top:6px}
+  .s-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#b0b0b3;padding:2px 0}
+  .s-dot{width:5px;height:5px;border-radius:2.5px;flex:0 0 auto}
+  .c-scale{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid #1e1e1e}
+  .c-scale input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:2px;background:#2d2d2d;outline:none}
+  .c-scale input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:#2d2d2d}
+  .c-scale input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:10px;height:10px;margin-top:-3.5px;border-radius:50%;background:#8a8a8a;cursor:pointer}
+  .c-scale-val{font-size:10px;color:#808080;min-width:30px;text-align:right}
+
+  #notice{
+    position:absolute;left:8px;bottom:6px;right:52px;font-size:10px;color:#808080;
+    background:rgba(0,0,0,.85);border-radius:8px;padding:4px 8px;display:none
+  }
+  #notice.show{display:block}
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="card"></div>
+  <div id="pill">
+    <div id="pill-switch" class="pill-switch" title="Mod: Kalan (Sol) / Kullanılan (Sağ)">
+      <div id="sw-track" class="sw-track remaining"><div class="sw-knob"></div></div>
+      <div id="sw-lbl" class="sw-lbl">KALAN</div>
+    </div>
+    <div id="cells"></div>
+  </div>
+  <div id="notice"></div>
+</div>
+<script>
+const invoke = window.__TAURI__.core.invoke;
+const listen = window.__TAURI__.event.listen;
+window.onerror = function(msg, url, line, col, error) {
+  try {
+    invoke('log_js', { msg: `JS ERROR: ${msg} at ${line}:${col}` });
+  } catch(e) {}
+};
+const card = document.getElementById('card');
+const pill = document.getElementById('pill');
+
+/* Colour ramp (upstream palette values) */
+const AMPLE='#00FF88', WATCH='#F2FF00', CRIT='#FF3F00';
+const TRACK='#303030', AMBER='#FFBF00', RUNGREEN='#28E07B';
+const tone=f=> f>=0.8?CRIT : f>=0.5?WATCH : AMPLE;
+
+let usage={status:'',windows:[],fetched_at:0,note:''};
+let codexSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let cursorSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let agSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let deepseekSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let glmSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let geminiApiSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let claudeApiSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let copilotSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let ollamaSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let nvidiaSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let glyphs={}; // id → {kind:'mark'|'appicon', url}
+const _initLangs=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||''];
+let uiLang=_initLangs.some(l=>/^tr\b/i.test(l))?'tr':_initLangs.some(l=>/^ru\b/i.test(l))?'ru':'en';
+const RU_TEXT={
+  'Included usage':'Включённое использование',
+  'API usage':'Использование API',
+  'On demand':'По запросу',
+  'Usage':'Использование',
+  'Current session':'Текущий сеанс',
+  'Weekly (all models)':'Недельный (все модели)',
+  'Weekly (Opus)':'Недельный (Opus)',
+  'Weekly (model-scoped)':'Недельный (для выбранной модели)',
+  'Weekly limit':'Недельный лимит',
+  'Weekly Limit':'Недельный лимит',
+  '5-Hour Limit':'Лимит на 5 часов',
+  'Monthly limit':'Месячный лимит',
+  'Monthly Limit':'Месячный лимит',
+  'Longer window':'Более длительный период',
+  'Requests today · no limit published':'Запросы сегодня · лимит не опубликован',
+  'Updated':'Обновлено',
+  'Resetting…':'Сброс…',
+  'Resets at':'Сброс в',
+  'Resets':'Сброс',
+  'Used':'Использовано',
+  'Remaining':'Осталось',
+  'Token Budget':'Лимит токенов',
+  'Working':'Работа',
+  'Waiting':'Ожидание',
+  'Streaming (network)':'Потоковая передача (сеть)',
+  'Rate limited, retrying in':'Превышен лимит, повтор через',
+  'Rate limited — retrying in':'Превышен лимит — повтор через',
+  'request today':'запрос сегодня',
+  'requests today':'запросов сегодня',
+  'no requests today':'сегодня запросов нет',
+  'Waiting for first reading…':'Ожидание первого показания…',
+  'Sign in to Claude Code to see usage.':'Войдите в Claude Code, чтобы увидеть использование.',
+  'Sign in to Cursor to see usage.':'Войдите в Cursor, чтобы увидеть использование.',
+  'Sign in to Codex to see usage.':'Войдите в Codex, чтобы увидеть использование.',
+  'Sign in to Antigravity to see usage.':'Войдите в Antigravity, чтобы увидеть использование.',
+  'Configure DeepSeek API Key in Settings.':'Настройте ключ API DeepSeek в Настройках.',
+  'Configure GLM / Z.ai Key in Settings.':'Настройте ключ GLM / Z.ai в Настройках.',
+  'Configure Gemini API Key in Settings.':'Настройте ключ Gemini API в Настройках.',
+  'Configure Claude API Key in Settings.':'Настройте ключ Claude API в Настройках.',
+  'Configure NVIDIA NIM API Key in Settings.':'Настройте ключ NVIDIA NIM в Настройках.',
+  'Sign in with GitHub CLI (`gh auth login`).':'Войдите через GitHub CLI (`gh auth login`).',
+  'Start Ollama locally (ollama serve).':'Запустите Ollama локально (ollama serve).',
+  'needs your input':'требуется ваш ответ',
+  'Working in':'Работает в',
+  'Notch size':'Размер панели'
+};
+const TR_TEXT={
+  'Included usage':'Dahil edilen kullanım',
+  'API usage':'API kullanımı',
+  'On demand':'İsteğe bağlı',
+  'Usage':'Kullanım',
+  'Current session':'Mevcut oturum',
+  'Weekly (all models)':'Haftalık (tüm modeller)',
+  'Weekly (Opus)':'Haftalık (Opus)',
+  'Weekly (model-scoped)':'Haftalık (modele özel)',
+  'Weekly limit':'Haftalık limit',
+  'Weekly Limit':'Haftalık limit',
+  '5-Hour Limit':'5 Saatlik Limit',
+  'Monthly limit':'Aylık limit',
+  'Monthly Limit':'Aylık limit',
+  'Longer window':'Daha uzun dönem',
+  'Requests today · no limit published':'Bugünkü istekler · limit belirtilmemiş',
+  'Updated':'Güncellendi',
+  'Resetting…':'Sıfırlanıyor…',
+  'Resets at':'Sıfırlanma saati',
+  'Resets':'Sıfırlanma',
+  'Used':'Kullanılan',
+  'Remaining':'Kalan',
+  'Token Budget':'Token Bütçesi',
+  'Working':'Çalışıyor',
+  'Waiting':'Bekliyor',
+  'Streaming (network)':'Akış yapılıyor (ağ)',
+  'Rate limited, retrying in':'Hız limiti aşıldı, tekrar deneme:',
+  'Rate limited — retrying in':'Hız limiti aşıldı — tekrar deneme:',
+  'request today':'istek bugün',
+  'requests today':'istek bugün',
+  'no requests today':'bugün istek yok',
+  'Waiting for first reading…':'İlk veri bekleniyor…',
+  'Sign in to Claude Code to see usage.':'Kullanımı görmek için Claude Code oturumu açın.',
+  'Sign in to Cursor to see usage.':'Kullanımı görmek için Cursor oturumu açın.',
+  'Sign in to Codex to see usage.':'Kullanımı görmek için Codex oturumu açın.',
+  'Sign in to Antigravity to see usage.':'Kullanımı görmek için Antigravity oturumu açın.',
+  'Configure DeepSeek API Key in Settings.':'Ayarlar\'dan DeepSeek API Anahtarını yapılandırın.',
+  'Configure GLM / Z.ai Key in Settings.':'Ayarlar\'dan GLM / Z.ai Anahtarını yapılandırın.',
+  'Configure Gemini API Key in Settings.':'Ayarlar\'dan Gemini API Anahtarını yapılandırın.',
+  'Configure Claude API Key in Settings.':'Ayarlar\'dan Claude API Anahtarını yapılandırın.',
+  'Configure NVIDIA NIM API Key in Settings.':'Ayarlar\'dan NVIDIA NIM API Anahtarını yapılandırın.',
+  'Sign in with GitHub CLI (`gh auth login`).':'GitHub CLI ile giriş yapın (`gh auth login`).',
+  'Start Ollama locally (ollama serve).':'Ollama\'yı yerel olarak başlatın (ollama serve).',
+  'needs your input':'yanıtınızı bekliyor',
+  'Working in':'Çalıştığı yer',
+  'Notch size':'Çentik boyutu'
+};
+function textCopy(value){
+  if(!value) return '';
+  if(uiLang==='ru'){
+    if(RU_TEXT[value]) return RU_TEXT[value];
+    return String(value)
+      .replace(/^(\d+)m limit$/,'Лимит на $1 мин')
+      .replace(/^(\d+)h limit$/,'Лимит на $1 ч')
+      .replace(/^(\d+)d limit$/,'Лимит на $1 дн.')
+      .replace(/^Rate limited, retrying in (\d+)s$/,'Превышен лимит, повтор через $1 с')
+      .replace(/^Rate limited — retrying in (\d+)s$/,'Превышен лимит — повтор через $1 с')
+      .replace(/^Unlimited on the (.+) plan — nothing to meter$/,'Безлимитный тариф $1 — нечего измерять')
+      .replace(/^The (.+) plan has nothing for Cursor to meter yet$/,'В тарифе $1 пока нечего измерять Cursor')
+      .replace(/^(.+) · Google publishes no quota for this account$/,'$1 · Google не публикует лимит для этого аккаунта')
+      .replace(/^Live read failed \((.+)\)$/,'Ошибка чтения онлайн-данных ($1)')
+      .replace(/Weekly \(all models\)/g,'Недельный (все модели)')
+      .replace(/Weekly \(Opus\)/g,'Недельный (Opus)')
+      .replace(/Weekly \(model-scoped\)/g,'Недельный (для выбранной модели)')
+      .replace(/Weekly limit/g,'Недельный лимит')
+      .replace(/Monthly limit/g,'Месячный лимит')
+      .replace(/\bWeekly\b/g,'Недельный')
+      .replace(/\bMonthly\b/g,'Месячный')
+      .replace(/ · via /g,' · через ')
+      .replace(/needs your input/g,'требуется ваш ответ')
+      .replace(/^Working in /,'Работает в ')
+      .replace(/via Antigravity CLI/g,'через CLI Antigravity')
+      .replace(/via Antigravity/g,'через Antigravity')
+      .replace(/via Google/g,'через Google')
+      .replace(/No Claude Code credential found/g,'Учётные данные Claude Code не найдены')
+      .replace(/Credential expired — run any claude command \(or chat with Claude\) to refresh it/g,'Учётные данные истекли — выполните любую команду claude (или начните чат с Claude), чтобы обновить их')
+      .replace(/Credential rejected \(switched accounts\?\)/g,'Учётные данные отклонены (вы сменили аккаунт?)')
+      .replace(/Codex sign-in expired — open Codex once to refresh it/g,'Срок входа в Codex истёк — откройте Codex для обновления')
+      .replace(/Codex rejected its sign-in — sign in to Codex again/g,'Codex отклонил вход — войдите в Codex снова')
+      .replace(/Codex reported no usage windows/g,'Codex не сообщил окна использования')
+      .replace(/Codex has not recorded a usage snapshot yet/g,'Codex ещё не записал снимок использования')
+      .replace(/from last Codex run/g,'из последнего запуска Codex')
+      .replace(/Waiting for Antigravity CLI quota/g,'Ожидание квоты Antigravity CLI')
+      .replace(/Open Antigravity to read its quota/g,'Откройте Antigravity, чтобы получить квоту')
+      .replace(/Antigravity's Google session was rejected — sign in again in Antigravity/g,'Сеанс Google в Antigravity отклонён — войдите в Antigravity снова')
+      .replace(/Antigravity is closed — last reading kept/g,'Antigravity закрыт — сохранено последнее показание')
+      .replace(/Sign in to Cursor \(the editor\) to see usage\./g,'Войдите в Cursor (редактор), чтобы увидеть использование.')
+      .replace(/Cursor session was rejected — sign in again in the editor/g,'Сеанс Cursor отклонён — снова войдите в редакторе');
+  }
+  if(uiLang==='tr'){
+    if(TR_TEXT[value]) return TR_TEXT[value];
+    return String(value)
+      .replace(/^(\d+)m limit$/,'$1 dk limit')
+      .replace(/^(\d+)h limit$/,'$1 sa limit')
+      .replace(/^(\d+)d limit$/,'$1 gün limit')
+      .replace(/^Rate limited, retrying in (\d+)s$/,'Hız limiti aşıldı, $1 sn içinde tekrar denenecek')
+      .replace(/^Rate limited — retrying in (\d+)s$/,'Hız limiti aşıldı — $1 sn içinde tekrar denenecek')
+      .replace(/^Unlimited on the (.+) plan — nothing to meter$/,'$1 planında sınırsız — ölçülecek bir şey yok')
+      .replace(/^The (.+) plan has nothing for Cursor to meter yet$/,'$1 planında henüz Cursor için ölçülecek bir veri yok')
+      .replace(/^(.+) · Google publishes no quota for this account$/,'$1 · Google bu hesap için kota yayınlamıyor')
+      .replace(/^Live read failed \((.+)\)$/,'Canlı veri okuma başarısız ($1)')
+      .replace(/Weekly \(all models\)/g,'Haftalık (tüm modeller)')
+      .replace(/Weekly \(Opus\)/g,'Haftalık (Opus)')
+      .replace(/Weekly \(model-scoped\)/g,'Haftalık (modele özel)')
+      .replace(/Weekly limit/g,'Haftalık limit')
+      .replace(/Monthly limit/g,'Aylık limit')
+      .replace(/\bWeekly\b/g,'Haftalık')
+      .replace(/\bMonthly\b/g,'Aylık')
+      .replace(/ · via /g,' · aracılığıyla: ')
+      .replace(/needs your input/g,'yanıtınızı bekliyor')
+      .replace(/^Working in /,'Çalıştığı yer: ')
+      .replace(/via Antigravity CLI/g,'Antigravity CLI ile')
+      .replace(/via Antigravity/g,'Antigravity ile')
+      .replace(/via Google/g,'Google ile')
+      .replace(/No Claude Code credential found/g,'Claude Code kimlik bilgisi bulunamadı')
+      .replace(/Credential expired — run any claude command \(or chat with Claude\) to refresh it/g,'Kimlik süresi doldu — yenilemek için herhangi bir claude komutu çalıştırın (veya Claude ile sohbet edin)')
+      .replace(/Credential rejected \(switched accounts\?\)/g,'Kimlik bilgisi reddedildi (hesap mı değiştirdiniz?)')
+      .replace(/Codex sign-in expired — open Codex once to refresh it/g,'Codex oturum süresi doldu — yenilemek için Codex\'i bir kez açın')
+      .replace(/Codex rejected its sign-in — sign in to Codex again/g,'Codex girişi reddedildi — Codex oturumunu tekrar açın')
+      .replace(/Codex reported no usage windows/g,'Codex kullanım dönemi bildirmedi')
+      .replace(/Codex has not recorded a usage snapshot yet/g,'Codex henüz bir kullanım anlık görüntüsü kaydetmedi')
+      .replace(/from last Codex run/g,'son Codex çalıştırmasından')
+      .replace(/Waiting for Antigravity CLI quota/g,'Antigravity CLI kotası bekleniyor')
+      .replace(/Open Antigravity to read its quota/g,'Kotasını okumak için Antigravity\'i açın')
+      .replace(/Antigravity's Google session was rejected — sign in again in Antigravity/g,'Antigravity\'nin Google oturumu reddedildi — Antigravity\'de tekrar giriş yapın')
+      .replace(/Antigravity is closed — last reading kept/g,'Antigravity kapalı — son okunan değer korundu')
+      .replace(/Sign in to Cursor \(the editor\) to see usage\./g,'Kullanımı görmek için Cursor (editör) oturumu açın.')
+      .replace(/Cursor session was rejected — sign in again in the editor/g,'Cursor oturumu reddedildi — editörde tekrar giriş yapın');
+  }
+  return value;
+}
+function setUiLanguage(lang){
+  const next=lang==='ru'?'ru':lang==='tr'?'tr':'en';
+  if(uiLang===next) return;
+  uiLang=next;
+  updateSwitchUi();
+  renderRing();
+  if(card&&card.classList.contains('show')) renderCard();
+}
+
+let displayMode='remaining'; // 'remaining' (sol / left) vs 'used' (sağ / right)
+
+function updateSwitchUi(){
+  const track=document.getElementById('sw-track');
+  const lbl=document.getElementById('sw-lbl');
+  const sw=document.getElementById('pill-switch');
+  if(!track||!lbl) return;
+  const isRem=(displayMode==='remaining');
+  track.classList.toggle('remaining',isRem);
+  track.classList.toggle('used',!isRem);
+  if(uiLang==='tr'){
+    lbl.textContent=isRem?'KALAN':'KULLANIM';
+    if(sw) sw.title=isRem?'Mod: Kalan Kota (Sol) — Kullanılan için sağa kaydırın / tıklayın':'Mod: Kullanılan Kota (Sağ) — Kalan için sola kaydırın / tıklayın';
+  } else if(uiLang==='ru'){
+    lbl.textContent=isRem?'ОСТАТОК':'РАСХОД';
+    if(sw) sw.title=isRem?'Режим: Остаток квоты (Слева)':'Режим: Использовано (Справа)';
+  } else {
+    lbl.textContent=isRem?'REMAIN':'USED';
+    if(sw) sw.title=isRem?'Mode: Remaining (Left) — click/slide to switch':'Mode: Used (Right) — click/slide to switch';
+  }
+}
+
+function setDisplayMode(mode){
+  const next=mode==='used'?'used':'remaining';
+  if(displayMode===next) return;
+  displayMode=next;
+  updateSwitchUi();
+  renderRing();
+  if(card&&card.classList.contains('show')) renderCard();
+  invoke('set_display_mode',{mode:displayMode}).catch(()=>{});
+}
+
+function wireSwitch(){
+  const pillSwitch=document.getElementById('pill-switch');
+  if(!pillSwitch) return;
+  let swDragging=false, swStartX=0;
+  pillSwitch.addEventListener('mousedown',e=>{ e.stopPropagation(); });
+  pillSwitch.addEventListener('pointerdown',e=>{
+    if(e.button!==0) return;
+    e.stopPropagation();
+    swDragging=true;
+    swStartX=e.clientX;
+    try{ pillSwitch.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  pillSwitch.addEventListener('pointermove',e=>{
+    if(!swDragging) return;
+    e.stopPropagation();
+    const dx=e.clientX-swStartX;
+    const track=document.getElementById('sw-track');
+    if(track){
+      if(dx<-3){ track.classList.add('remaining'); track.classList.remove('used'); }
+      else if(dx>3){ track.classList.remove('remaining'); track.classList.add('used'); }
+    }
+  });
+  const finishSwitch=e=>{
+    if(!swDragging) return;
+    swDragging=false;
+    e.stopPropagation();
+    try{ pillSwitch.releasePointerCapture(e.pointerId); }catch(_){}
+    const dx=e.clientX-swStartX;
+    const rect=pillSwitch.getBoundingClientRect();
+    const midX=rect.left+rect.width/2;
+    if(dx<-3){
+      setDisplayMode('remaining');
+    }else if(dx>3){
+      setDisplayMode('used');
+    }else{
+      if(e.clientX<midX && displayMode==='used'){
+        setDisplayMode('remaining');
+      }else if(e.clientX>=midX && displayMode==='remaining'){
+        setDisplayMode('used');
+      }else{
+        setDisplayMode(displayMode==='remaining'?'used':'remaining');
+      }
+    }
+  };
+  pillSwitch.addEventListener('pointerup',finishSwitch);
+  pillSwitch.addEventListener('pointercancel',finishSwitch);
+  pillSwitch.addEventListener('click',e=>{ e.stopPropagation(); });
+}
+// Notch size, as a percentage (40…100). Declared here with the rest of the page state so the card
+// renderer can never reference it before it exists.
+let scalePct=100, scaleDragging=false, scaleT=null, scaleSaveT=null;
+// "Is it working?" per provider: Claude from the four-state engine, the others from the activity probe. Returns running | attention | idle
+function workState(id){
+  if(id==='claude'){
+    if(stateSnap.agg==='running') return 'running';
+    if(stateSnap.agg==='attention') return 'attention';
+    // The engine cannot see cloud sessions: fall back to the desktop app's network activity
+    if(activity.some(a=>a.provider==='claude'&&a.state==='busy')) return 'running';
+    return 'idle';
+  }
+  const acts=activity.filter(a=>a.provider===id);
+  if(acts.some(a=>a.state==='waiting')) return 'attention';
+  if(acts.some(a=>a.state==='busy')) return 'running';
+  return 'idle';
+}
+function glyphHtml(p,small){
+  const g=glyphs[p.id];
+  if(g&&g.kind==='svg'&&g.svg) return `<span class="mark">${g.svg}</span>`;
+  if(g&&g.url) return `<img class="${g.kind}" src="${g.url}" alt="${p.name}"${small?' style="width:16px;height:16px;border-radius:4px"':''}>`;
+  return small?'':p.glyph; // fallback letter
+}
+// Provider table (order = top to bottom in the pill). `glyph` is the fallback letter used when no mark is available
+// What each ring shows: [{provider, window}]. null or an empty list means every provider, each
+// showing whichever of its windows is fullest, which is the original behaviour and the default.
+// An empty `window` on a slot means the same "fullest" rule for that one provider.
+let notchSlots=null;
+function slotFor(id){
+  if(!Array.isArray(notchSlots)) return null;
+  for(const s of notchSlots){ if(s&&s.provider===id) return s; }
+  return null;
+}
+function providers(){
+  const all=[
+    {id:'claude',name:'Claude',glyph:'C',snap:usage},
+    {id:'codex',name:'Codex',glyph:'Cx',snap:codexSnap},
+    {id:'cursor',name:'Cursor',glyph:'Cu',snap:cursorSnap},
+    {id:'gemini',name:'Antigravity',glyph:'Ag',snap:agSnap},
+    {id:'deepseek',name:'DeepSeek',glyph:'DS',snap:deepseekSnap},
+    {id:'glm',name:'GLM',glyph:'GL',snap:glmSnap},
+    {id:'gemini_api',name:'Gemini API',glyph:'G',snap:geminiApiSnap},
+    {id:'claude_api',name:'Claude API',glyph:'Ca',snap:claudeApiSnap},
+    {id:'nvidia',name:'NVIDIA NIM',glyph:'NV',snap:nvidiaSnap},
+    {id:'copilot',name:'Copilot',glyph:'Cp',snap:copilotSnap},
+    {id:'ollama',name:'Ollama',glyph:'Ol',snap:ollamaSnap}
+  ];
+  const core=['claude','codex','cursor','gemini'];
+  const active=all.filter(p=>core.includes(p.id) || p.snap.status!=='absent');
+  if(Array.isArray(notchSlots)&&notchSlots.length){
+    const ordered=[];
+    for(const s of notchSlots){
+      if(!s) continue;
+      const found=active.find(p=>p.id===s.provider);
+      if(found && !ordered.includes(found)) ordered.push(found);
+    }
+    for(const p of active){
+      if(!ordered.includes(p)) ordered.push(p);
+    }
+    if(ordered.length) return ordered;
+  }
+  return active;
+}
+function headlineOf(snap,id){
+  if(!snap.windows.length) return null;
+  const metered=snap.windows.filter(w=>w.count==null);
+  // A ring can be pinned to one window in settings; falling back to the fullest keeps working if
+  // that window disappears, rather than leaving the ring blank.
+  const slot=id?slotFor(id):null;
+  if(slot&&slot.window){
+    const pinned=metered.filter(w=>w.id===slot.window);
+    if(pinned.length) return pinned[0];
+  }
+  if(metered.length) return metered.reduce((a,b)=> b.used>a.used?b:a);
+  return snap.windows[0];
+}
+function staleOf(snap){ if(snap.status==='stale') return true; return snap.fetched_at>0 && (Date.now()-snap.fetched_at)>5*60*1000; }
+let stateSnap={sessions:[],agg:'idle'};
+
+function svgArc(r,frac,color,width,extra=''){
+  const C=2*Math.PI*r;
+  return `<circle cx="17" cy="17" r="${r}" fill="none" stroke="${color}" stroke-width="${width}"
+    stroke-dasharray="${(C*frac).toFixed(2)} ${C.toFixed(2)}" stroke-linecap="butt"
+    transform="rotate(-90 17 17)" ${extra}/>`;
+}
+
+function headline(){ // the cell shows the most constrained window — the one that will stop you first
+  if(!usage.windows.length) return null;
+  return usage.windows.reduce((a,b)=> b.used>a.used?b:a);
+}
+
+function isStale(){
+  if(usage.status==='stale') return true;
+  return usage.fetched_at>0 && (Date.now()-usage.fetched_at)>5*60*1000;
+}
+
+let cellReordering=false;
+
+function wireCellDrag(cell){
+  if(cell._dragWired) return;
+  cell._dragWired=true;
+  cell.setAttribute('draggable','false');
+  cell.addEventListener('dragstart',e=>e.preventDefault());
+
+  cell.addEventListener('mousedown', e=>{
+    if(e.button!==0) return;
+    e.stopPropagation();
+    const startX=e.clientX, startY=e.clientY;
+    let isDrag=false;
+    let ghost=null;
+
+    const onMouseMove=ev=>{
+      const dx=ev.clientX-startX, dy=ev.clientY-startY;
+      if(!isDrag && (Math.abs(dx)>4 || Math.abs(dy)>4)){
+        isDrag=true;
+        cellReordering=true;
+        clearTimeout(hideTimer);
+        hideCard();
+
+        // Lock click-through OFF in Rust during cell drag so watchdog doesn't disable mouse events!
+        invoke('set_hot', { rects: [[0, 0, 9999, 9999]], expanded: true }).catch(()=>{});
+
+        ghost=cell.cloneNode(true);
+        ghost.id='drag-ghost';
+        ghost.classList.remove('dragging');
+        ghost.style.position='fixed';
+        ghost.style.left=ev.clientX+'px';
+        ghost.style.top=ev.clientY+'px';
+        ghost.style.transform='translate(-50%, -50%) scale(1.15)';
+        ghost.style.pointerEvents='none';
+        ghost.style.zIndex='99999';
+        ghost.style.opacity='0.92';
+        ghost.style.filter='drop-shadow(0 6px 14px rgba(0,0,0,0.85))';
+        document.body.appendChild(ghost);
+
+        cell.classList.add('drag-placeholder');
+      }
+
+      if(isDrag && ghost){
+        ghost.style.left=ev.clientX+'px';
+        ghost.style.top=ev.clientY+'px';
+
+        const cellsEl=document.getElementById('cells');
+        if(!cellsEl) return;
+        const isHorizontal=(currentEdge==='top'||currentEdge==='bottom');
+        const siblings=[...cellsEl.querySelectorAll('.cell:not(.drag-placeholder)')];
+        let nextSibling=null;
+        for(const sib of siblings){
+          const r=sib.getBoundingClientRect();
+          if(isHorizontal){
+            if(ev.clientX < r.left + r.width/2){ nextSibling=sib; break; }
+          } else {
+            if(ev.clientY < r.top + r.height/2){ nextSibling=sib; break; }
+          }
+        }
+        if(nextSibling){
+          if(nextSibling!==cell.nextSibling){
+            cellsEl.insertBefore(cell, nextSibling);
+          }
+        } else {
+          if(cellsEl.lastElementChild!==cell){
+            cellsEl.appendChild(cell);
+          }
+        }
+      }
+    };
+
+    const onMouseUp=ev=>{
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      if(ghost && ghost.parentNode){
+        ghost.parentNode.removeChild(ghost);
+        ghost=null;
+      }
+      cell.classList.remove('drag-placeholder');
+
+      if(isDrag){
+        isDrag=false;
+        setTimeout(()=>{ cellReordering=false; }, 100);
+        const cellsEl=document.getElementById('cells');
+        const newOrder=[...cellsEl.querySelectorAll('.cell')].map(c=>c.dataset.p);
+        const oldSlots=Array.isArray(notchSlots)?notchSlots:[];
+        const newSlots=newOrder.map(pid=>{
+          const ex=oldSlots.find(s=>s&&s.provider===pid);
+          return { provider:pid, window:(ex&&ex.window)||'' };
+        });
+        notchSlots=newSlots;
+        const ps=providers();
+        cellsEl.dataset.cells=ps.map(p=>p.id+':'+(glyphs[p.id]?glyphs[p.id].kind:'-')).join(',');
+        invoke('set_notch_slots',{slots:newSlots}).catch(()=>{});
+        renderRing();
+        reportHot();
+      } else {
+        cellReordering=false;
+        reportHot();
+        invoke('refresh_usage').catch(()=>{});
+        invoke('open_provider_page',{provider:cell.dataset.p}).catch(()=>{});
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function renderRing(){
+  const ps=providers();
+  const cellsEl=document.getElementById('cells')||pill;
+  // Rebuild the DOM only when the structure changes (never swap the element under the cursor)
+  const want=ps.map(p=>p.id+':'+(glyphs[p.id]?glyphs[p.id].kind:'-')).join(',');
+  if(cellsEl.dataset.cells!==want){
+    cellsEl.innerHTML=ps.map(p=>`<div class="cell" data-p="${p.id}">
+      <div class="ringwrap"><svg class="ring" viewBox="0 0 34 34"></svg><div class="glyph ${(!glyphs[p.id]&&p.glyph.length>1)?'small':''}">${glyphHtml(p)}</div></div>
+      <div class="pct">—</div></div>`).join('');
+    cellsEl.dataset.cells=want;
+    cellsEl.querySelectorAll('.cell').forEach(wireCellDrag);
+  }
+  for(const p of ps){
+    const cell=cellsEl.querySelector(`.cell[data-p="${p.id}"]`); if(!cell) continue;
+    wireCellDrag(cell);
+    const svg=cell.querySelector('svg.ring'), pct=cell.querySelector('.pct'), glyph=cell.querySelector('.glyph'), wrap=cell.querySelector('.ringwrap');
+    const h=headlineOf(p.snap,p.id);
+    let inner=`<circle cx="17" cy="17" r="13" fill="#18181a"/><circle cx="17" cy="17" r="14.5" fill="none" stroke="${TRACK}" stroke-width="2.8"/>`;
+    if(h && typeof h.used==='number'){
+      const isRem=displayMode==='remaining';
+      const frac=isRem?Math.max(0,Math.min(1,1-h.used)):Math.min(h.used,1);
+      inner+=svgArc(14.5,frac,tone(h.used),2.8);
+    }
+    svg.innerHTML=inner;
+    if(p.snap.status==='needsAuth'||p.snap.status==='none'||p.snap.status==='absent') pct.textContent='—';
+    else if(h && typeof h.used==='number'){
+      const isRem=displayMode==='remaining';
+      const val=isRem?Math.max(0,Math.min(1,1-h.used)):h.used;
+      pct.textContent=(h.derived?'~':'')+Math.round(val*100)+'%';
+    }
+    else if(h && h.count!=null) pct.textContent=(h.derived?'~':'')+h.count;
+    else pct.textContent='…';
+    glyph.classList.toggle('dim', !!(h && h.used>=1));
+    wrap.classList.toggle('dim', staleOf(p.snap));
+  }
+  reportHot(); // a provider appearing or leaving resizes the pill
+}
+
+function resetCopy(ms){
+  if(!ms) return '';
+  const diff=ms-Date.now();
+  if(diff<=0) return uiLang==='ru'?'Сброс…':uiLang==='tr'?'Sıfırlanıyor…':'Resetting…';
+  if(diff<60*60*1000) return uiLang==='ru'
+    ? `Сброс через ${Math.max(1,Math.round(diff/60000))} мин`
+    : uiLang==='tr'
+    ? `${Math.max(1,Math.round(diff/60000))} dk içinde sıfırlanır`
+    : `Resets in ${Math.max(1,Math.round(diff/60000))} min`;
+  const d=new Date(ms);
+  const locale=uiLang==='ru'?'ru-RU':uiLang==='tr'?'tr-TR':'en-US';
+  const t=d.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit'});
+  if(diff<24*60*60*1000) return `${uiLang==='ru'?'Сброс в':uiLang==='tr'?'Sıfırlanma saati':'Resets at'} ${t}`;
+  return `${uiLang==='ru'?'Сброс':uiLang==='tr'?'Sıfırlanma':'Resets'} ${d.toLocaleDateString(locale,{weekday:'short'})} ${t}`;
+}
+
+function ago(ms){
+  const m=Math.round((Date.now()-ms)/60000);
+  if(uiLang==='ru') return m<60?`${m} мин назад`:`${Math.round(m/60)} ч назад`;
+  if(uiLang==='tr') return m<60?`${m} dk önce`:`${Math.round(m/60)} sa önce`;
+  return m<60?`${m}m ago`:`${Math.round(m/60)}h ago`;
+}
+
+const STATE_DOT={running:RUNGREEN,attention:AMBER,done:'#57c7ff'};
+
+let hoverId='claude';
+function renderCard(){
+  const c=document.getElementById('card');
+  const p=providers().find(x=>x.id===hoverId)||providers()[0];
+  const snap=p.snap;
+  const headIcon=glyphHtml(p,true);
+  const titleText=uiLang==='ru'?'Использование '+p.name:uiLang==='tr'?p.name+' Kullanımı':p.name+' Usage';
+  const sTitle=uiLang==='tr'?'Ayarlar':uiLang==='ru'?'Настройки':'Settings';
+  let html=`<div class="c-head">${headIcon}<span class="c-title">${titleText}</span><button id="btn-settings-card" class="c-settings-btn" title="${sTitle}">⚙</button></div>`;
+  if(staleOf(snap)&&snap.fetched_at) html+=`<div class="c-sub">${textCopy('Updated')} ${ago(snap.fetched_at)}</div>`;
+  if(snap.status==='needsAuth'){
+    const who={
+      claude:'Sign in to Claude Code to see usage.',
+      cursor:'Sign in to Cursor to see usage.',
+      codex:'Sign in to Codex to see usage.',
+      gemini:'Sign in to Antigravity to see usage.',
+      deepseek:'Configure DeepSeek API Key in Settings.',
+      glm:'Configure GLM / Z.ai Key in Settings.',
+      gemini_api:'Configure Gemini API Key in Settings.',
+      claude_api:'Configure Claude API Key in Settings.',
+      nvidia:'Configure NVIDIA NIM API Key in Settings.',
+      copilot:'Sign in with GitHub CLI (`gh auth login`).',
+      ollama:'Start Ollama locally (ollama serve).'
+    }[p.id]||'';
+    html+=`<div class="c-note">${textCopy(who)}<br>${esc(textCopy(snap.note||''))}</div>`;
+  }else if(!snap.windows.length){
+    html+=`<div class="c-note">${esc(textCopy(snap.note||'Waiting for first reading…'))}</div>`;
+  }else{
+    for(const w of snap.windows){
+      if(w.count!=null){
+        html+=`<div class="win"><div class="w-row"><span class="w-label">${esc(textCopy(w.label))}</span></div>
+          <div class="w-used">${w.count>0?`~${w.count} ${textCopy(w.count===1?'request today':'requests today')}`:textCopy('no requests today')}</div></div>`;
+        continue;
+      }
+      const isRem=displayMode==='remaining';
+      const frac=isRem?Math.max(0,Math.min(1,1-w.used)):Math.min(w.used,1);
+      const labelType=isRem?textCopy('Remaining'):textCopy('Used');
+      html+=`<div class="win">
+        <div class="w-row"><span class="w-label">${esc(textCopy(w.label))}</span><span class="w-reset">${resetCopy(w.resets_at)}</span></div>
+        <div class="w-track"><div class="w-fill" style="width:${(frac*100).toFixed(0)}%;background:${tone(w.used)}"></div></div>
+        <div class="w-used">${w.derived?'~':''}${Math.round(frac*100)}% ${labelType}</div>
+      </div>`;
+    }
+    if(snap.note) html+=`<div class="c-note">${esc(textCopy(snap.note))}</div>`;
+  }
+  if(p.id==='claude'){ // live sessions (a full list with jump-to-session is a follow-up)
+    const act=stateSnap.sessions.filter(s=>s.state!=='idle');
+    if(act.length){
+      html+=`<div class="c-sessions">`;
+      for(const s of act.slice(0,5)){
+        html+=`<div class="s-row"><span class="s-dot" style="background:${STATE_DOT[s.state]||'#666'}"></span>${esc(s.title)}</div>`;
+      }
+      html+=`</div>`;
+    }
+  }else{ // other providers: detected activity rows (Cursor reports state; Codex/Antigravity are inferred from recent writes)
+    const acts=activity.filter(a=>a.provider===p.id);
+    if(acts.length){
+      html+=`<div class="c-sessions">`;
+      for(const a of acts.slice(0,5)){
+        const col=a.state==='waiting'?AMBER:RUNGREEN;
+        html+=`<div class="s-row"><span class="s-dot" style="background:${col}"></span>${esc(a.name)}<span style="color:#808080;margin-left:auto">${esc(textCopy(a.detail))}</span></div>`;
+      }
+      html+=`</div>`;
+    }
+  }
+  html+=`<div class="c-scale"><input id="scale-range" type="range" min="40" max="100" step="5" value="${scalePct}" aria-label="${textCopy('Notch size')}" title="${textCopy('Notch size')}"><span class="c-scale-val" id="scale-val">${scalePct}%</span></div>`;
+  c.innerHTML=html;
+  const sBtn=document.getElementById('btn-settings-card');
+  if(sBtn) sBtn.addEventListener('click', e=>{ e.stopPropagation(); invoke('open_settings').catch(()=>{}); });
+  wireScaleRow();
+  placeCard();
+}
+// The card follows the hovered cell: vertically centred on it for left/right edges, horizontally centred for top/bottom edges
+function placeCard(){
+  const cellsEl=document.getElementById('cells')||pill;
+  const cell=cellsEl.querySelector(`.cell[data-p="${hoverId}"]`)||pill;
+  const cr=cell.getBoundingClientRect();
+  const isHorizontal=(currentEdge==='top'||currentEdge==='bottom');
+
+  if(isHorizontal){
+    const cx=cr.left+cr.width/2;
+    const W=innerWidth, cw=card.offsetWidth||230;
+    let left=Math.round(cx-cw/2);
+    left=Math.max(8,Math.min(left,W-cw-8));
+    card.style.left=left+'px';
+    card.style.right='auto';
+    card.style.transform='none';
+
+    const tailX=Math.max(16,Math.min(cw-16,Math.round(cx-left)));
+    card.style.setProperty('--tail-x',tailX+'px');
+
+    if(currentEdge==='top'){
+      const pr=pill.getBoundingClientRect();
+      card.style.top=Math.max(8,Math.round(pr.bottom+6))+'px';
+      card.style.bottom='auto';
+    }else{
+      const pr=pill.getBoundingClientRect();
+      card.style.bottom=Math.max(8,Math.round((innerHeight-pr.top)+6))+'px';
+      card.style.top='auto';
+    }
+  } else {
+    const cy=cr.top+cr.height/2;
+    const H=innerHeight, ch=card.offsetHeight||0;
+    let top=Math.round(cy-ch/2);
+    top=Math.max(8,Math.min(top,H-ch-8));
+    card.style.top=top+'px';
+    card.style.bottom='auto';
+    card.style.transform='none';
+    card.style.setProperty('--tail',Math.max(16,Math.min(ch-16,Math.round(cy-top)))+'px');
+
+    if(currentEdge==='left'){
+      const pr=pill.getBoundingClientRect();
+      card.style.left=Math.max(8,Math.round(pr.right+6))+'px';
+      card.style.right='auto';
+    }else{
+      const pr=pill.getBoundingClientRect();
+      card.style.right=Math.max(8,Math.round((innerWidth-pr.left)+6))+'px';
+      card.style.left='auto';
+    }
+  }
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+
+/* Hover: stays expanded while either the pill or the card is under the cursor; collapses after a 250 ms grace period (upstream motion rule) */
+let hideTimer=null;
+function showCard(){clearTimeout(hideTimer);card.classList.add('show');renderCard();armWatchdog();invoke('refresh_usage').catch(()=>{});} // show first, then render: placeCard needs offsetHeight
+function hideCard(){card.classList.remove('show');reportHot();}
+function scheduleHide(){clearTimeout(hideTimer);hideTimer=setTimeout(hideCard,250);}
+// ===== Diagnostics + geometry =====
+function jslog(m){invoke('log_js',{msg:String(m)}).catch(()=>{});}
+function callq(cmd,args){ // invoke with visible failure: any command error is reported on screen (a silent .catch used to swallow them)
+  return invoke(cmd,args).catch(e=>{notice(cmd+' failed: '+(e&&e.message||e));throw e;});
+}
+// Hot rectangles are reported in physical pixels (multiplied by this page's real DPR), so the Rust side does no conversion — WebView2's DPR and the window scale can disagree
+function rectOf(el){
+  if(!el) return [0,0,0,0];
+  const r=el.getBoundingClientRect(),k=window.devicePixelRatio||1;
+  return [r.left*k,r.top*k,r.width*k,r.height*k];
+}
+/* Rust gates click-through on these, so they are reported whenever the pill or card moves, not only
+   when the card opens: a stale pill rectangle is a pill that cannot be clicked. */
+function reportHot(){
+  const open=card.classList.contains('show');
+  const pr=rectOf(pill);
+  const rects=[];
+  if(pr[2]>0 && pr[3]>0) rects.push(pr);
+  if(open){
+    const cr=rectOf(card);
+    if(cr[2]>0 && cr[3]>0) rects.push(cr);
+  }
+  if(rects.length){
+    callq('set_hot',{rects,expanded:open}).catch(()=>{});
+  }
+}
+/* ---- Notch size ---------------------------------------------------------
+   The pill alone is scaled, with CSS `zoom` rather than `transform`: the pill is centred by
+   `top:50%; transform:translateY(-50%)`, so assigning to `transform` here would wipe that out and
+   throw the pill to the top of the screen. `zoom` changes the element's laid-out size instead, so
+   the existing centring keeps working and `right:0` keeps it against the edge.
+   The hover card is deliberately left at full size: it holds the slider, and a slider that shrank
+   as it was dragged would slide out from under the cursor. */
+function clampPct(v){const n=Math.round(Number(v));return isFinite(n)?Math.max(40,Math.min(100,n)):100;}
+function applyPillScale(){ if(pill) pill.style.zoom=String(scalePct/100); }
+function applyScale(v){
+  scalePct=clampPct(v);
+  const lab=document.getElementById('scale-val'); if(lab) lab.textContent=scalePct+'%';
+  applyPillScale();                                       // draw it at once; do not wait on Rust
+  // One save when the drag settles, not one per pixel: set_scale writes the config file and
+  // broadcasts an event every time it is called. Same 150ms wait the settings window's slider uses.
+  clearTimeout(scaleSaveT);
+  scaleSaveT=setTimeout(()=>{invoke('set_scale',{scale:scalePct/100}).catch(()=>{});},150); // percent → fraction: 60 becomes 0.60
+  // The pill just changed size, so the hot rectangles the watchdog checks are stale
+  clearTimeout(scaleT);
+  scaleT=setTimeout(()=>{if(card.classList.contains('show')){placeCard();armWatchdog();}},120);
+}
+function wireScaleRow(){
+  const r=document.getElementById('scale-range'); if(!r) return;
+  r.value=String(scalePct);
+  r.addEventListener('input',()=>applyScale(r.value)); // live while dragging, and on arrow keys
+  r.addEventListener('pointerdown',()=>{scaleDragging=true;});
+  r.addEventListener('mousedown',()=>{scaleDragging=true;});
+}
+document.addEventListener('pointerup',()=>{scaleDragging=false;});
+document.addEventListener('pointercancel',()=>{scaleDragging=false;});
+document.addEventListener('mouseup',()=>{scaleDragging=false;});
+function loadScale(){
+  invoke('get_scale').then(v=>{
+    const n=Number(v); if(isFinite(n)&&n>0) scalePct=clampPct(Math.round(n*100));
+    applyPillScale(); wireScaleRow();
+  }).catch(()=>{applyPillScale();});
+}
+
+function armWatchdog(){
+  requestAnimationFrame(reportHot); // wait one frame so renderCard's new content is laid out before measuring
+}
+// Viewport fit: native DPI scaling from WebView2
+function fitZoom(){
+  document.documentElement.style.zoom='';
+  return 1;
+}
+function reportDpr(){
+  const z=fitZoom();
+  jslog(`dpr=${window.devicePixelRatio} inner=${innerWidth}x${innerHeight}`);
+  callq('report_dpr',{dpr:window.devicePixelRatio||1,w:innerWidth,h:innerHeight}).catch(()=>{});
+}
+reportDpr();
+window.addEventListener('resize',()=>{clearTimeout(window._dprT);window._dprT=setTimeout(()=>{reportDpr();reportHot();},120);});
+matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',reportDpr);
+
+/* Collapse test: no trust in element-level mouseenter/mouseleave/e.target at all —
+   pure geometry: is the cursor (clientX/Y) inside pill rect ∪ card rect ∪ their bounding box?
+   Leaving the window: document mouseout (relatedTarget=null) plus the Rust watchdog (system cursor) as a second line. */
+function inRect(x,y,r,pad){return x>=r.left-pad&&y>=r.top-pad&&x<r.right+pad&&y<r.bottom+pad;}
+function cellAt(x,y){
+  for(const el of pill.querySelectorAll('.cell')){ if(inRect(x,y,el.getBoundingClientRect(),6)) return el.dataset.p; }
+  return null;
+}
+function pointerInHot(x,y){
+  const p=pill.getBoundingClientRect();
+  if(inRect(x,y,p,4))return true;
+  if(!card.classList.contains('show'))return false;
+  const c=card.getBoundingClientRect();
+  if(inRect(x,y,c,4))return true;
+  const u={left:Math.min(p.left,c.left),top:Math.min(p.top,c.top),right:Math.max(p.right,c.right),bottom:Math.max(p.bottom,c.bottom)};
+  return inRect(x,y,u,0);
+}
+let hideLogged=0;
+document.addEventListener('mousemove',e=>{
+  if(dragging || cellReordering) return; // no card while dragging or reordering
+  const hot=pointerInHot(e.clientX,e.clientY);
+  if(hot){
+    clearTimeout(hideTimer);
+    const id=cellAt(e.clientX,e.clientY);
+    if(id&&id!==hoverId){ hoverId=id; if(card.classList.contains('show')){ renderCard(); armWatchdog(); } }
+    if(!card.classList.contains('show')) showCard();
+  }
+  else if(card.classList.contains('show')){ if(hideLogged++<5) jslog(`mousemove left the hot area -> collapse at ${e.clientX},${e.clientY}`); scheduleHide(); }
+});
+document.addEventListener('mouseout',e=>{ // relatedTarget null = the cursor left the page
+  if(!e.relatedTarget && card.classList.contains('show')){ if(hideLogged++<5) jslog('mouseout left the page -> collapse'); scheduleHide(); }
+});
+listen('pointer_left',()=>{if(scaleDragging)return;clearTimeout(hideTimer);hideCard();}).catch(()=>{});
+// The size can also be changed from the settings window, which is a different window entirely.
+// Ignore it while this page's own slider is being dragged, or the two would fight each other.
+listen('scale',e=>{
+  if(scaleDragging) return;
+  const n=Number(e.payload); if(!isFinite(n)||n<=0) return;
+  scalePct=clampPct(Math.round(n*100));
+  applyPillScale();
+  const r=document.getElementById('scale-range');
+  if(r){r.value=String(scalePct);const lab=document.getElementById('scale-val');if(lab)lab.textContent=scalePct+'%';}
+}).catch(()=>{});
+// Card content changes change its height -> report the hot rectangles again
+listen('usage',()=>{if(card.classList.contains('show'))armWatchdog();}).catch(()=>{});
+listen('state',()=>{if(card.classList.contains('show'))armWatchdog();}).catch(()=>{});
+/* The pill can be dragged around the screen edges. Pressing on the pill background/padding
+   initiates window edge dragging (drag_begin); dragging a cell reorders icons inside the notch. */
+let press=null, dragging=false;
+pill.addEventListener('mousedown',e=>{
+  if(e.button!==0) return;
+  if(e.target.closest('.cell') || e.target.closest('.pill-switch')) return;
+  press={x:e.clientX, y:e.clientY};
+});
+document.addEventListener('mousemove',e=>{
+  if(!press||dragging) return;
+  if(Math.abs(e.clientY-press.y)>4||Math.abs(e.clientX-press.x)>4){
+    dragging=true; clearTimeout(hideTimer); hideCard();
+    invoke('drag_begin').catch(err=>{notice('drag_begin failed: '+err);dragging=false;});
+  }
+});
+document.addEventListener('mouseup',e=>{
+  if(e.button!==0) return;
+  press=null;
+});
+pill.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  invoke('open_settings').catch(()=>{});
+});
+pill.addEventListener('dblclick', e=>{
+  e.preventDefault();
+  invoke('open_settings').catch(()=>{});
+});
+listen('drag_end',()=>{dragging=false;press=null;reportHot();}).catch(()=>{});
+
+function notice(msg){
+  const n=document.getElementById('notice');
+  n.textContent=msg;n.classList.add('show');
+  clearTimeout(n._h);n._h=setTimeout(()=>n.classList.remove('show'),6000);
+}
+
+listen('usage',e=>{usage=e.payload||usage;renderRing();if(card.classList.contains('show'))renderCard();})
+  .catch(e=>notice('listen(usage) failed: '+e));
+listen('state',e=>{stateSnap=e.payload||stateSnap;setUiLanguage(stateSnap.lang_resolved);renderRing();if(card.classList.contains('show'))renderCard();})
+  .catch(e=>notice('listen(state) failed: '+e));
+listen('notice',e=>notice(e.payload)).catch(()=>{});
+listen('codex',e=>{codexSnap=e.payload||codexSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+listen('cursor',e=>{cursorSnap=e.payload||cursorSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_cursor').then(u=>{cursorSnap=u||cursorSnap;renderRing();}).catch(()=>{});
+listen('antigravity',e=>{agSnap=e.payload||agSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_antigravity').then(u=>{agSnap=u||agSnap;renderRing();}).catch(()=>{});
+listen('deepseek',e=>{deepseekSnap=e.payload||deepseekSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_deepseek').then(u=>{deepseekSnap=u||deepseekSnap;renderRing();}).catch(()=>{});
+listen('glm',e=>{glmSnap=e.payload||glmSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_glm').then(u=>{glmSnap=u||glmSnap;renderRing();}).catch(()=>{});
+listen('gemini_api',e=>{geminiApiSnap=e.payload||geminiApiSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_gemini_api').then(u=>{geminiApiSnap=u||geminiApiSnap;renderRing();}).catch(()=>{});
+listen('claude_api',e=>{claudeApiSnap=e.payload||claudeApiSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_claude_api').then(u=>{claudeApiSnap=u||claudeApiSnap;renderRing();}).catch(()=>{});
+listen('nvidia',e=>{nvidiaSnap=e.payload||nvidiaSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_nvidia').then(u=>{nvidiaSnap=u||nvidiaSnap;renderRing();}).catch(()=>{});
+listen('copilot',e=>{copilotSnap=e.payload||copilotSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_copilot').then(u=>{copilotSnap=u||copilotSnap;renderRing();}).catch(()=>{});
+listen('ollama',e=>{ollamaSnap=e.payload||ollamaSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_ollama').then(u=>{ollamaSnap=u||ollamaSnap;renderRing();}).catch(()=>{});
+loadScale();
+invoke('get_notch_slots').then(v=>{if(Array.isArray(v)){notchSlots=v;renderRing();}}).catch(()=>{});
+listen('notch_slots',e=>{
+  notchSlots=Array.isArray(e.payload)?e.payload:null;
+  renderRing();
+  if(card.classList.contains('show')){renderCard();armWatchdog();}
+}).catch(()=>{});
+listen('glyphs',e=>{glyphs=e.payload||glyphs;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+listen('activity',e=>{activity=e.payload||activity;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_activity').then(a=>{activity=a||activity;renderRing();}).catch(()=>{});
+invoke('get_glyphs').then(g=>{glyphs=g||glyphs;renderRing();}).catch(()=>{});
+invoke('get_codex').then(u=>{codexSnap=u||codexSnap;renderRing();}).catch(()=>{});
+invoke('get_usage').then(u=>{usage=u||usage;renderRing();}).catch(e=>notice('get_usage failed: '+e));
+invoke('get_state').then(s=>{stateSnap=s||stateSnap;setUiLanguage(stateSnap.lang_resolved);renderRing();}).catch(()=>{});
+wireSwitch();
+invoke('get_display_mode').then(m=>{
+  if(m==='used'||m==='remaining'){
+    displayMode=m;
+    updateSwitchUi();
+    renderRing();
+    if(card&&card.classList.contains('show')) renderCard();
+  }
+}).catch(()=>{});
+listen('display_mode',e=>{
+  if(e.payload==='used'||e.payload==='remaining'){
+    displayMode=e.payload;
+    updateSwitchUi();
+    renderRing();
+    if(card&&card.classList.contains('show')) renderCard();
+  }
+}).catch(()=>{});
+let currentEdge='right';
+let currentOffset=0.5;
+
+function applyNotchPosition(edge, offset){
+  const next=(edge==='left'||edge==='top'||edge==='bottom'||edge==='right')?edge:'right';
+  currentEdge=next;
+  if(typeof offset==='number' && isFinite(offset)) currentOffset=Math.max(0,Math.min(1,offset));
+  document.body.className='edge-'+currentEdge;
+
+  if(currentEdge==='right'||currentEdge==='left'){
+    pill.style.left=(currentEdge==='left')?'0':'auto';
+    pill.style.right=(currentEdge==='right')?'0':'auto';
+    pill.style.top='50%';
+    pill.style.bottom='auto';
+    pill.style.transform='translateY(-50%)';
+  } else {
+    // horizontal: top or bottom
+    pill.style.top=(currentEdge==='top')?'0':'auto';
+    pill.style.bottom=(currentEdge==='bottom')?'0':'auto';
+    pill.style.left='50%';
+    pill.style.right='auto';
+    pill.style.transform='translateX(-50%)';
+  }
+
+  applyPillScale();
+  reportHot();
+  if(card.classList.contains('show')) placeCard();
+}
+function setNotchEdge(edge, offset){ applyNotchPosition(edge, offset); }
+
+invoke('get_notch_position').then(pos=>{
+  if(pos) applyNotchPosition(pos.edge, pos.offset);
+}).catch(()=>{});
+listen('notch_position',e=>{
+  if(e.payload) applyNotchPosition(e.payload.edge, e.payload.offset);
+}).catch(()=>{});
+
+invoke('get_lang_resolved').then(l=>{ if(l==='tr'||l==='ru'||l==='en') setUiLanguage(l); }).catch(()=>{});
+
+renderRing();
+reportHot();
+setInterval(renderRing,30_000); // stale state and reset copy move with time
+setInterval(()=>{ invoke('refresh_usage').catch(()=>{}); }, 30_000);
+</script>
+</body>
+</html>
